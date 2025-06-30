@@ -32,7 +32,7 @@ export abstract class WorkflowEvents<
 
   private getEvents() {
     const sql = this.ctx.storage.sql;
-    return sql.exec("SELECT * FROM events");
+    return sql.exec<WorkflowProgressEvent>("SELECT * FROM events");
   }
 
   override async fetch(request: Request) {
@@ -42,8 +42,10 @@ export abstract class WorkflowEvents<
 
       return streamSSE(c, async (stream) => {
         for (const event of events) {
+          const { type, ...rest } = event;
           await stream.writeSSE({
-            data: JSON.stringify(event),
+            event: type,
+            data: JSON.stringify(rest),
           });
         }
       });
