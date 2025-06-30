@@ -9,7 +9,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.get("/:instanceId/sse", async (c) => {
   const instanceId = c.req.param("instanceId");
   const workflowEventsNs = c.env.WORKFLOW_EVENTS;
-  return WorkflowEvents.serveSSE(instanceId, workflowEventsNs);
+  return WorkflowEvents.serveSSE(instanceId, c.req.raw, workflowEventsNs);
 });
 
 app.post("/", async (c) => {

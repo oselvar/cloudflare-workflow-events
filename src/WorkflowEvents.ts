@@ -16,12 +16,13 @@ export abstract class WorkflowEvents<
 
   static async serveSSE<T extends WorkflowEvents<object>>(
     instanceId: string,
+    request: Request,
     workflowEventsNs: DurableObjectNamespace<T>,
   ) {
     const workflowEvents = workflowEventsNs.get(
       workflowEventsNs.idFromName(instanceId),
     );
-    return workflowEvents.fetch("http://0.0.0.0/sse");
+    return workflowEvents.fetch("http://0.0.0.0/sse", request);
   }
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -57,8 +58,14 @@ export abstract class WorkflowEvents<
     return new Promise((resolve) => this.eventResolvers.push(resolve));
   }
 
-  private getEvents() {
+  private getEvents(sinceId?: number) {
     const sql = this.ctx.storage.sql;
+    if (sinceId !== undefined) {
+      return sql.exec<WorkflowProgressEvent & { id: number }>(
+        "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
+        sinceId,
+      );
+    }
     return sql.exec<WorkflowProgressEvent & { id: number }>(
       "SELECT * FROM events ORDER BY id ASC",
     );
@@ -68,11 +75,24 @@ export abstract class WorkflowEvents<
     const app = new Hono<{ Bindings: Env }>();
     app.get("/sse", (c) => {
       return streamSSE(c, async (stream) => {
+        const lastEventId = c.req.header("Last-Event-ID");
         let lastEventCount = 0;
 
+        if (lastEventId) {
+          const sinceId = parseInt(lastEventId, 10);
+          if (!isNaN(sinceId)) {
+            // Start from the event after the last received event
+            lastEventCount = sinceId;
+          }
+        }
+
         while (true) {
-          const allEvents = this.getEvents().toArray();
-          const newEvents = allEvents.slice(lastEventCount);
+          const allEvents = this.getEvents(
+            lastEventCount > 0 ? lastEventCount : undefined,
+          ).toArray();
+          const newEvents = allEvents.slice(
+            lastEventCount > 0 ? 0 : lastEventCount,
+          );
 
           for (const event of newEvents) {
             const { id, type, ...rest } = event;
@@ -83,7 +103,10 @@ export abstract class WorkflowEvents<
             });
           }
 
-          lastEventCount = allEvents.length;
+          lastEventCount =
+            allEvents.length > 0
+              ? (allEvents[allEvents.length - 1]?.id ?? lastEventCount)
+              : lastEventCount;
           await this.waitForNewEvent();
         }
       });
