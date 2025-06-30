@@ -1,4 +1,4 @@
-import { describe, it } from "node:test";
+import { describe, it } from "vitest";
 
 describe("WorkflowEvents", () => {
   it("sorry no tests", () => {});
