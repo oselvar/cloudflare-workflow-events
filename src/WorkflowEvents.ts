@@ -14,11 +14,22 @@ export abstract class WorkflowEvents<
 > extends DurableObject<Env> {
   private eventResolvers: Array<() => void> = [];
 
+  static async serveSSE<T extends WorkflowEvents<object>>(
+    instanceId: string,
+    workflowEventsNs: DurableObjectNamespace<T>,
+  ) {
+    const workflowEvents = workflowEventsNs.get(
+      workflowEventsNs.idFromName(instanceId),
+    );
+    return workflowEvents.fetch("http://0.0.0.0/sse");
+  }
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     const sql = ctx.storage.sql;
 
     sql.exec(`CREATE TABLE IF NOT EXISTS events(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL,
       step TEXT NOT NULL,
       timestamp TEXT NOT NULL,
@@ -48,7 +59,9 @@ export abstract class WorkflowEvents<
 
   private getEvents() {
     const sql = this.ctx.storage.sql;
-    return sql.exec<WorkflowProgressEvent>("SELECT * FROM events");
+    return sql.exec<WorkflowProgressEvent & { id: number }>(
+      "SELECT * FROM events ORDER BY id ASC",
+    );
   }
 
   override async fetch(request: Request) {
@@ -62,8 +75,9 @@ export abstract class WorkflowEvents<
           const newEvents = allEvents.slice(lastEventCount);
 
           for (const event of newEvents) {
-            const { type, ...rest } = event;
+            const { id, type, ...rest } = event;
             await stream.writeSSE({
+              id: String(id),
               event: type,
               data: JSON.stringify(rest),
             });
