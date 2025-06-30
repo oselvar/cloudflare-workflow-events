@@ -9,18 +9,16 @@ export type WorkflowProgressEvent = {
   error?: string;
 };
 
-export abstract class WorkflowEvents<
-  Env extends object,
-> extends DurableObject<Env> {
+export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   private eventResolvers: Array<() => void> = [];
 
   static async serveSSE<T extends WorkflowEvents<object>>(
     instanceId: string,
     request: Request,
-    workflowEventsNs: DurableObjectNamespace<T>,
+    workflowEventsNs: DurableObjectNamespace<T>
   ) {
     const workflowEvents = workflowEventsNs.get(
-      workflowEventsNs.idFromName(instanceId),
+      workflowEventsNs.idFromName(instanceId)
     );
     return workflowEvents.fetch("http://0.0.0.0/sse", request);
   }
@@ -63,11 +61,11 @@ export abstract class WorkflowEvents<
     if (sinceId !== undefined) {
       return sql.exec<WorkflowProgressEvent & { id: number }>(
         "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
-        sinceId,
+        sinceId
       );
     }
     return sql.exec<WorkflowProgressEvent & { id: number }>(
-      "SELECT * FROM events ORDER BY id ASC",
+      "SELECT * FROM events ORDER BY id ASC"
     );
   }
 
@@ -88,10 +86,10 @@ export abstract class WorkflowEvents<
 
         while (true) {
           const allEvents = this.getEvents(
-            lastEventCount > 0 ? lastEventCount : undefined,
+            lastEventCount > 0 ? lastEventCount : undefined
           ).toArray();
           const newEvents = allEvents.slice(
-            lastEventCount > 0 ? 0 : lastEventCount,
+            lastEventCount > 0 ? 0 : lastEventCount
           );
 
           for (const event of newEvents) {
