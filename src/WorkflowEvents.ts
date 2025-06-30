@@ -2,8 +2,11 @@ import { DurableObject } from "cloudflare:workers";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
-export type WorkflowProgressEvent = {
-  type: "step_started" | "step_completed" | "step_failed";
+export type StepMethod = "do" | "sleep" | "sleepUntil" | "waitForEvent";
+
+export type StepEvent = {
+  name: "started" | "completed" | "failed";
+  method: StepMethod;
   step: string;
   timestamp: string;
   error?: string;
@@ -12,7 +15,7 @@ export type WorkflowProgressEvent = {
 export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   private eventResolvers: Array<() => void> = [];
 
-  static async serveSSE<T extends WorkflowEvents<object>>(
+  static serveSSE<T extends WorkflowEvents<object>>(
     instanceId: string,
     request: Request,
     workflowEventsNs: DurableObjectNamespace<T>,
@@ -36,10 +39,10 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
     );`);
   }
 
-  async addEvent(event: WorkflowProgressEvent) {
+  async addEvent(event: StepEvent) {
     const sql = this.ctx.storage.sql;
     const query = `INSERT INTO events (type, step, timestamp, error) VALUES (?, ?, ?, ?)`;
-    sql.exec(query, ...[event.type, event.step, event.timestamp, event.error]);
+    sql.exec(query, ...[event.name, event.step, event.timestamp, event.error]);
 
     // Notify waiting streams about the new event
     this.notifyNewEvent();
@@ -59,12 +62,12 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   private getEvents(sinceId?: number) {
     const sql = this.ctx.storage.sql;
     if (sinceId !== undefined) {
-      return sql.exec<WorkflowProgressEvent & { id: number }>(
+      return sql.exec<StepEvent & { id: number }>(
         "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
         sinceId,
       );
     }
-    return sql.exec<WorkflowProgressEvent & { id: number }>(
+    return sql.exec<StepEvent & { id: number }>(
       "SELECT * FROM events ORDER BY id ASC",
     );
   }
@@ -93,10 +96,10 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
           );
 
           for (const event of newEvents) {
-            const { id, type, ...rest } = event;
+            const { id, name, ...rest } = event;
             await stream.writeSSE({
               id: String(id),
-              event: type,
+              event: name,
               data: JSON.stringify(rest),
             });
           }

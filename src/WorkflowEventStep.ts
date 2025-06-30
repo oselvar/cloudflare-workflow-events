@@ -1,71 +1,94 @@
 import type {
+  WorkflowSleepDuration,
   WorkflowStep,
   WorkflowStepConfig,
   WorkflowStepEvent,
   WorkflowTimeoutDuration,
 } from "cloudflare:workers";
 
-import type { WorkflowEvents } from "./WorkflowEvents";
+import type { StepMethod, WorkflowEvents } from "./WorkflowEvents";
 
-export class WorkflowEventStep implements WorkflowStep {
+export class WorkflowEventStep<Env extends object> implements WorkflowStep {
+  private readonly workflowEvents: DurableObjectStub<WorkflowEvents<Env>>;
+
   constructor(
     private readonly step: WorkflowStep,
-    private readonly workflowEventsNs: DurableObjectNamespace<
-      WorkflowEvents<Env>
-    >,
-    private readonly instanceId: string,
-  ) {}
-
-  async do<T>(
-    label: string,
-    configOrTask: WorkflowStepConfig | (() => Promise<T>),
-    task?: () => Promise<T>,
-  ): Promise<T> {
-    const workflowEvents = this.workflowEventsNs.get(
-      this.workflowEventsNs.idFromName(this.instanceId),
+    workflowEventsNs: DurableObjectNamespace<WorkflowEvents<Env>>,
+    instanceId: string,
+  ) {
+    this.workflowEvents = workflowEventsNs.get(
+      workflowEventsNs.idFromName(instanceId),
     );
-    await workflowEvents.addEvent({
-      type: "step_started",
-      step: label,
-      timestamp: new Date().toISOString(),
+  }
+
+  async do<T extends Rpc.Serializable<T>>(
+    name: string,
+    configOrTask: WorkflowStepConfig | (() => Promise<T>),
+    callback?: () => Promise<T>,
+  ): Promise<T> {
+    return this.withEvents("do", name, async () => {
+      return await this.step.do(
+        name,
+        configOrTask as WorkflowStepConfig,
+        callback as () => Promise<T>,
+      );
     });
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const result = await this.step.do(label, configOrTask, task);
-      await workflowEvents.addEvent({
-        type: "step_completed",
-        step: label,
-        timestamp: new Date().toISOString(),
-      });
-      return result as T;
-    } catch (error) {
-      await workflowEvents.addEvent({
-        type: "step_failed",
-        step: label,
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
   }
 
-  sleep(name: string, duration: WorkflowSleepDuration): Promise<void> {
-    return this.step.sleep(name, duration);
+  async sleep(name: string, duration: WorkflowSleepDuration): Promise<void> {
+    return this.withEvents("sleep", name, async () => {
+      return await this.step.sleep(name, duration);
+    });
   }
 
-  sleepUntil(name: string, timestamp: Date | number): Promise<void> {
-    return this.step.sleepUntil(name, timestamp);
+  async sleepUntil(name: string, timestamp: Date | number): Promise<void> {
+    return this.withEvents("sleepUntil", name, async () => {
+      return await this.step.sleepUntil(name, timestamp);
+    });
   }
 
-  waitForEvent<T extends Rpc.Serializable<T>>(
+  async waitForEvent<T extends Rpc.Serializable<T>>(
     name: string,
     options: {
       type: string;
       timeout?: WorkflowTimeoutDuration | number;
     },
   ): Promise<WorkflowStepEvent<T>> {
-    return this.step.waitForEvent(name, options);
+    return this.withEvents("waitForEvent", name, async () => {
+      return await this.step.waitForEvent(name, options);
+    });
+  }
+
+  private async withEvents<R>(
+    method: StepMethod,
+    step: string,
+    task: () => Promise<R>,
+  ): Promise<R> {
+    await this.workflowEvents.addEvent({
+      name: "started",
+      method: method,
+      step,
+      timestamp: new Date().toISOString(),
+    });
+
+    try {
+      const result = await task();
+      await this.workflowEvents.addEvent({
+        name: "completed",
+        method: method,
+        step,
+        timestamp: new Date().toISOString(),
+      });
+      return result;
+    } catch (error) {
+      await this.workflowEvents.addEvent({
+        name: "failed",
+        method: method,
+        step,
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 }

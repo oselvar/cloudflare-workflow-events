@@ -5,22 +5,22 @@ The `cloudflare-workflow-events` exposes a Server-Sent Events endpoint that emit
 For example:
 
 ```
-event: step_started
+event: started
 data: {"step":"first step","timestamp":"2025-06-30T13:43:26.690Z","error":null}
 
-event: step_completed
+event: completed
 data: {"step":"first step","timestamp":"2025-06-30T13:43:28.688Z","error":null}
 
-event: step_started
+event: started
 data: {"step":"second step","timestamp":"2025-06-30T13:43:28.689Z","error":null}
 
-event: step_completed
+event: completed
 data: {"step":"second step","timestamp":"2025-06-30T13:43:31.687Z","error":null}
 
-event: step_started
+event: started
 data: {"step":"third step","timestamp":"2025-06-30T13:43:31.688Z","error":null}
 
-event: step_completed
+event: completed
 data: {"step":"third step","timestamp":"2025-06-30T13:43:32.689Z","error":null}
 ```
 
