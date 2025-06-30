@@ -13,16 +13,11 @@ export class DemoWorkflow extends WorkflowEntrypoint<Env> {
       this.env.WORKFLOW_EVENTS,
       event.instanceId,
     );
-    await step.do("first step", async () => {
-      await step.sleep("zzz", "2 seconds");
-    });
 
-    await step.do("second step", async () => {
-      await step.sleep("zzz", "3 seconds");
-    });
-
-    await step.do("third step", async () => {
-      await step.sleep("zzz", "1 second");
-    });
+    for (let i = 0; i < 20; i++) {
+      await step.do(`step ${i}`, async () => {
+        await step.sleep(`sleep_${i}`, "2 second");
+      });
+    }
   }
 }

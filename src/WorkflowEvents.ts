@@ -12,6 +12,8 @@ export type WorkflowProgressEvent = {
 export abstract class WorkflowEvents<
   Env extends object,
 > extends DurableObject<Env> {
+  private eventResolvers: Array<() => void> = [];
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     const sql = ctx.storage.sql;
@@ -28,6 +30,20 @@ export abstract class WorkflowEvents<
     const sql = this.ctx.storage.sql;
     const query = `INSERT INTO events (type, step, timestamp, error) VALUES (?, ?, ?, ?)`;
     sql.exec(query, ...[event.type, event.step, event.timestamp, event.error]);
+
+    // Notify waiting streams about the new event
+    this.notifyNewEvent();
+  }
+
+  private notifyNewEvent() {
+    // Resolve all waiting promises
+    const resolvers = this.eventResolvers;
+    this.eventResolvers = [];
+    resolvers.forEach((resolve) => resolve());
+  }
+
+  private waitForNewEvent(): Promise<void> {
+    return new Promise((resolve) => this.eventResolvers.push(resolve));
   }
 
   private getEvents() {
@@ -38,15 +54,23 @@ export abstract class WorkflowEvents<
   override async fetch(request: Request) {
     const app = new Hono<{ Bindings: Env }>();
     app.get("/sse", (c) => {
-      const events = this.getEvents().toArray();
-
       return streamSSE(c, async (stream) => {
-        for (const event of events) {
-          const { type, ...rest } = event;
-          await stream.writeSSE({
-            event: type,
-            data: JSON.stringify(rest),
-          });
+        let lastEventCount = 0;
+
+        while (true) {
+          const allEvents = this.getEvents().toArray();
+          const newEvents = allEvents.slice(lastEventCount);
+
+          for (const event of newEvents) {
+            const { type, ...rest } = event;
+            await stream.writeSSE({
+              event: type,
+              data: JSON.stringify(rest),
+            });
+          }
+
+          lastEventCount = allEvents.length;
+          await this.waitForNewEvent();
         }
       });
     });

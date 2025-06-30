@@ -15,8 +15,8 @@ app.get("/:instanceId/sse", async (c) => {
 
 app.post("/", async (c) => {
   const workflow = c.env.DEMO_WORKFLOW;
-  const result = await workflow.create();
-  return c.json(result);
+  const { id } = await workflow.create();
+  return Response.redirect(new URL(`/${id}/sse`, c.req.url), 302);
 });
 
 export default app;
