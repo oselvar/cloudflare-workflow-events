@@ -1,0 +1,19 @@
+compatibility_date = "2024-12-05"
+main = "src/examples/index.ts"
+name = "cloudflare-workflow-events-demo"
+
+[observability]
+enabled = true
+
+[[workflows]]
+binding = "DEMO_WORKFLOW"
+class_name = "DemoWorkflow"
+name = "demo"
+
+[[durable_objects.bindings]]
+name = "WORKFLOW_EVENTS"
+class_name = "WorkflowEvents"
+
+[[migrations]]
+new_sqlite_classes = ["WorkflowEvents"]
+tag = "v1"
