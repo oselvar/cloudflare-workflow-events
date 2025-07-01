@@ -63,6 +63,19 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
     const app = new Hono<{ Bindings: Env }>();
     app.get("/sse", (c) => {
       return streamSSE(c, async (stream) => {
+        const ping = setInterval(() => {
+          stream.writeSSE({ event: "ping", data: "" }).catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error("SSE Error writing ping", err);
+          });
+        }, 10000);
+
+        let loop = true;
+        stream.onAbort(() => {
+          loop = false;
+          clearInterval(ping);
+        });
+
         const lastEventId = c.req.header("Last-Event-ID");
         let lastEventCount = 0;
 
@@ -74,7 +87,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
           }
         }
 
-        while (true) {
+        while (loop) {
           const allEvents = this.getEvents(
             lastEventCount > 0 ? lastEventCount : undefined,
           ).toArray();
