@@ -12,6 +12,10 @@ export type StepEvent = {
   error?: string;
 };
 
+export type StepEventWithId = StepEvent & {
+  id: number;
+};
+
 export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   private eventResolvers: Array<() => void> = [];
 
@@ -48,15 +52,14 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
     return new Promise((resolve) => this.eventResolvers.push(resolve));
   }
 
-  private getEvents(sinceId?: number) {
+  public async getEvents(sinceId?: number): Promise<readonly StepEventWithId[]> {
     const sql = this.ctx.storage.sql;
     if (sinceId !== undefined) {
-      return sql.exec<StepEvent & { id: number }>(
-        "SELECT * FROM events WHERE id > ? ORDER BY id ASC",
-        sinceId,
-      );
+      return sql
+        .exec<StepEventWithId>("SELECT * FROM events WHERE id > ? ORDER BY id ASC", sinceId)
+        .toArray();
     }
-    return sql.exec<StepEvent & { id: number }>("SELECT * FROM events ORDER BY id ASC");
+    return sql.exec<StepEventWithId>("SELECT * FROM events ORDER BY id ASC").toArray();
   }
 
   override async fetch(request: Request) {
@@ -88,9 +91,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
         }
 
         while (loop) {
-          const allEvents = this.getEvents(
-            lastEventCount > 0 ? lastEventCount : undefined,
-          ).toArray();
+          const allEvents = await this.getEvents(lastEventCount > 0 ? lastEventCount : undefined);
           const newEvents = allEvents.slice(lastEventCount > 0 ? 0 : lastEventCount);
 
           for (const event of newEvents) {
