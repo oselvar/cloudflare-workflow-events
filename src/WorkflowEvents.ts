@@ -15,17 +15,6 @@ export type StepEvent = {
 export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   private eventResolvers: Array<() => void> = [];
 
-  static serveSSE<T extends WorkflowEvents<object>>(
-    instanceId: string,
-    request: Request,
-    workflowEventsNs: DurableObjectNamespace<T>,
-  ) {
-    const workflowEvents = workflowEventsNs.get(
-      workflowEventsNs.idFromName(instanceId),
-    );
-    return workflowEvents.fetch("http://0.0.0.0/sse", request);
-  }
-
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     const sql = ctx.storage.sql;
@@ -67,9 +56,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
         sinceId,
       );
     }
-    return sql.exec<StepEvent & { id: number }>(
-      "SELECT * FROM events ORDER BY id ASC",
-    );
+    return sql.exec<StepEvent & { id: number }>("SELECT * FROM events ORDER BY id ASC");
   }
 
   override async fetch(request: Request) {
@@ -91,9 +78,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
           const allEvents = this.getEvents(
             lastEventCount > 0 ? lastEventCount : undefined,
           ).toArray();
-          const newEvents = allEvents.slice(
-            lastEventCount > 0 ? 0 : lastEventCount,
-          );
+          const newEvents = allEvents.slice(lastEventCount > 0 ? 0 : lastEventCount);
 
           for (const event of newEvents) {
             const { id, name, ...rest } = event;

@@ -16,9 +16,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     workflowEventsNs: DurableObjectNamespace<WorkflowEvents<Env>>,
     instanceId: string,
   ) {
-    this.workflowEvents = workflowEventsNs.get(
-      workflowEventsNs.idFromName(instanceId),
-    );
+    this.workflowEvents = workflowEventsNs.get(workflowEventsNs.idFromName(instanceId));
   }
 
   async do<T extends Rpc.Serializable<T>>(
