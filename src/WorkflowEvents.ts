@@ -5,7 +5,7 @@ import { streamSSE } from "hono/streaming";
 export type StepMethod = "do" | "sleep" | "sleepUntil" | "waitForEvent";
 
 export type StepEvent = {
-  name: "started" | "completed" | "failed";
+  type: "started" | "completed" | "failed";
   method: StepMethod;
   step: string;
   timestamp: string;
@@ -31,7 +31,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   async addEvent(event: StepEvent) {
     const sql = this.ctx.storage.sql;
     const query = `INSERT INTO events (type, step, timestamp, error) VALUES (?, ?, ?, ?)`;
-    sql.exec(query, ...[event.name, event.step, event.timestamp, event.error]);
+    sql.exec(query, ...[event.type, event.step, event.timestamp, event.error]);
 
     // Notify waiting streams about the new event
     this.notifyNewEvent();
@@ -94,10 +94,10 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
           const newEvents = allEvents.slice(lastEventCount > 0 ? 0 : lastEventCount);
 
           for (const event of newEvents) {
-            const { id, name, ...rest } = event;
+            const { id, type, ...rest } = event;
             await stream.writeSSE({
               id: String(id),
-              event: name,
+              event: type,
               data: JSON.stringify(rest),
             });
           }

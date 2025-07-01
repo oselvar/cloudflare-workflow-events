@@ -8,6 +8,11 @@ import type {
 
 import type { StepMethod, WorkflowEvents } from "./WorkflowEvents";
 
+/**
+ * Whether or not to send an event notification for a given step
+ */
+export type ShouldNotify = (step: string) => boolean;
+
 export class WorkflowEventStep<Env extends object> implements WorkflowStep {
   private readonly workflowEvents: DurableObjectStub<WorkflowEvents<Env>>;
 
@@ -15,6 +20,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     private readonly step: WorkflowStep,
     workflowEventsNs: DurableObjectNamespace<WorkflowEvents<Env>>,
     instanceId: string,
+    private readonly shouldNotify: ShouldNotify = () => true,
   ) {
     this.workflowEvents = workflowEventsNs.get(workflowEventsNs.idFromName(instanceId));
   }
@@ -52,8 +58,12 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     step: string,
     callback: () => Promise<R>,
   ): Promise<R> {
+    const addEvent = this.shouldNotify(step);
+    if (!addEvent) {
+      return callback();
+    }
     await this.workflowEvents.addEvent({
-      name: "started",
+      type: "started",
       method: method,
       step,
       timestamp: new Date().toISOString(),
@@ -62,7 +72,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     try {
       const result = await callback();
       await this.workflowEvents.addEvent({
-        name: "completed",
+        type: "completed",
         method: method,
         step,
         timestamp: new Date().toISOString(),
@@ -70,7 +80,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
       return result;
     } catch (error) {
       await this.workflowEvents.addEvent({
-        name: "failed",
+        type: "failed",
         method: method,
         step,
         timestamp: new Date().toISOString(),
