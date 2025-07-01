@@ -1,9 +1,7 @@
-import type { WorkflowEvents } from "./WorkflowEvents";
-
-export function serveSSE<T extends WorkflowEvents<object>>(
+export function serveSSE(
   instanceId: string,
   request: Request,
-  workflowEventsNs: DurableObjectNamespace<T>,
+  workflowEventsNs: DurableObjectNamespace,
 ) {
   const workflowEvents = workflowEventsNs.get(workflowEventsNs.idFromName(instanceId));
   return workflowEvents.fetch("http://0.0.0.0/sse", request);

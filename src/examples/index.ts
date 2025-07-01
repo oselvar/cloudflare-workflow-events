@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 
-import { serveSSE } from "../index";
+import { serveSSE } from "../sse";
 export { WorkflowEvents } from "../WorkflowEvents";
 export { DemoWorkflow } from "./DemoWorkflow";
 
