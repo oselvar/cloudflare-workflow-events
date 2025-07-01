@@ -1,6 +1,6 @@
 {
   "name": "@oselvar/cloudflare-workflow-events",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Subscribe to events from Cloudflare Workflows",
   "publishConfig": {
     "access": "public"
