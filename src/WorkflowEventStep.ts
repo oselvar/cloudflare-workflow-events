@@ -24,21 +24,17 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     configOrTask: WorkflowStepConfig | (() => Promise<T>),
     callback?: () => Promise<T>,
   ): Promise<T> {
-    return this.withEvents("do", name, async () => {
-      return this.step.do(name, configOrTask as WorkflowStepConfig, callback as () => Promise<T>);
-    });
+    return this.withEvents("do", name, () =>
+      this.step.do(name, configOrTask as WorkflowStepConfig, callback as () => Promise<T>),
+    );
   }
 
   async sleep(name: string, duration: WorkflowSleepDuration): Promise<void> {
-    return this.withEvents("sleep", name, async () => {
-      return this.step.sleep(name, duration);
-    });
+    return this.withEvents("sleep", name, () => this.step.sleep(name, duration));
   }
 
   async sleepUntil(name: string, timestamp: Date | number): Promise<void> {
-    return this.withEvents("sleepUntil", name, async () => {
-      return this.step.sleepUntil(name, timestamp);
-    });
+    return this.withEvents("sleepUntil", name, () => this.step.sleepUntil(name, timestamp));
   }
 
   async waitForEvent<T extends Rpc.Serializable<T>>(
@@ -48,9 +44,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
       timeout?: WorkflowTimeoutDuration | number;
     },
   ): Promise<WorkflowStepEvent<T>> {
-    return this.withEvents("waitForEvent", name, async () => {
-      return await this.step.waitForEvent(name, options);
-    });
+    return this.withEvents("waitForEvent", name, () => this.step.waitForEvent(name, options));
   }
 
   private async withEvents<R>(
