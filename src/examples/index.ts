@@ -12,6 +12,14 @@ app.get("/:instanceId/sse", async (c) => {
   return serveSSE(instanceId, c.req.raw, workflowEventsNs);
 });
 
+app.post("/:instanceId/event", async (c) => {
+  const instanceId = c.req.param("instanceId");
+  const workflow = c.env.DEMO_WORKFLOW;
+  const instance = await workflow.get(instanceId);
+  await instance.sendEvent({ type: "waiting", payload: "Wake up" });
+  return new Response("Sent event\n", { status: 200 });
+});
+
 app.post("/", async (c) => {
   const workflow = c.env.DEMO_WORKFLOW;
   const { id } = await workflow.create();

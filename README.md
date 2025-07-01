@@ -39,6 +39,10 @@ Listen to events (using the `Location` header)
 
     curl http://localhost:9875/cbd3f7a0-e9ee-422d-8d33-9db7383dba2c/sse
 
+The workflow will wait for events. Trigger one:
+
+    curl -X POST http://localhost:9875/cbd3f7a0-e9ee-422d-8d33-9db7383dba2c/event
+
 ## Motivation
 
 The library was built for https://openartmarket.com/ to display progress on a purchase. The purchase workflow takes up to a minute, and we wanted to give users a way to monitor the progress of their purchase.

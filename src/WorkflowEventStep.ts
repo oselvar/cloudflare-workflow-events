@@ -25,23 +25,19 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     callback?: () => Promise<T>,
   ): Promise<T> {
     return this.withEvents("do", name, async () => {
-      return await this.step.do(
-        name,
-        configOrTask as WorkflowStepConfig,
-        callback as () => Promise<T>,
-      );
+      return this.step.do(name, configOrTask as WorkflowStepConfig, callback as () => Promise<T>);
     });
   }
 
   async sleep(name: string, duration: WorkflowSleepDuration): Promise<void> {
     return this.withEvents("sleep", name, async () => {
-      return await this.step.sleep(name, duration);
+      return this.step.sleep(name, duration);
     });
   }
 
   async sleepUntil(name: string, timestamp: Date | number): Promise<void> {
     return this.withEvents("sleepUntil", name, async () => {
-      return await this.step.sleepUntil(name, timestamp);
+      return this.step.sleepUntil(name, timestamp);
     });
   }
 
@@ -60,7 +56,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
   private async withEvents<R>(
     method: StepMethod,
     step: string,
-    task: () => Promise<R>,
+    callback: () => Promise<R>,
   ): Promise<R> {
     await this.workflowEvents.addEvent({
       name: "started",
@@ -70,7 +66,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     });
 
     try {
-      const result = await task();
+      const result = await callback();
       await this.workflowEvents.addEvent({
         name: "completed",
         method: method,

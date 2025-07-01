@@ -7,8 +7,19 @@ export class DemoWorkflow extends WorkflowEntrypoint<Env> {
     step = new WorkflowEventStep(step, this.env.WORKFLOW_EVENTS, event.instanceId);
 
     for (let i = 0; i < 20; i++) {
+      if (i % 3 === 2) {
+        const event = await step.waitForEvent(`wait for event ${i}`, {
+          type: "waiting",
+          timeout: "1 minute",
+        });
+        // eslint-disable-next-line no-console
+        console.log("Received event:", event);
+      }
+      await step.sleep(`sleep_${i}`, "2 second");
+
       await step.do(`step ${i}`, async () => {
-        await step.sleep(`sleep_${i}`, "2 second");
+        // eslint-disable-next-line no-console
+        console.log(`Running step ${i}`);
       });
     }
   }
