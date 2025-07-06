@@ -1,4 +1,3 @@
-import { DurableObject } from "cloudflare:workers";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
@@ -16,55 +15,24 @@ export type StepEventWithId = StepEvent & {
   id: number;
 };
 
-export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
+export abstract class WorkflowSSE {
   private eventResolvers: Array<() => void> = [];
 
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    const sql = ctx.storage.sql;
+  constructor(private readonly ssePath: string) {}
 
-    sql.exec(`CREATE TABLE IF NOT EXISTS events(
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL,
-      step TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      error TEXT
-    );`);
-  }
-
-  async addEvent(event: StepEvent) {
-    const sql = this.ctx.storage.sql;
-    const query = `INSERT INTO events (type, step, timestamp, error) VALUES (?, ?, ?, ?)`;
-    sql.exec(query, ...[event.type, event.step, event.timestamp, event.error]);
+  addEvent(event: StepEvent) {
+    this.storeEvent(event);
 
     // Notify waiting streams about the new event
     this.notifyNewEvent();
   }
 
-  private notifyNewEvent() {
-    // Resolve all waiting promises
-    const resolvers = this.eventResolvers;
-    this.eventResolvers = [];
-    resolvers.forEach((resolve) => resolve());
-  }
+  protected abstract storeEvent(event: StepEvent): void;
+  public abstract getEvents(sinceId?: number): readonly StepEventWithId[];
 
-  private waitForNewEvent(): Promise<void> {
-    return new Promise((resolve) => this.eventResolvers.push(resolve));
-  }
-
-  public async getEvents(sinceId?: number): Promise<readonly StepEventWithId[]> {
-    const sql = this.ctx.storage.sql;
-    if (sinceId !== undefined) {
-      return sql
-        .exec<StepEventWithId>("SELECT * FROM events WHERE id > ? ORDER BY id ASC", sinceId)
-        .toArray();
-    }
-    return sql.exec<StepEventWithId>("SELECT * FROM events ORDER BY id ASC").toArray();
-  }
-
-  override async fetch(request: Request) {
+  async fetch(request: Request) {
     const app = new Hono<{ Bindings: Env }>();
-    app.get("/sse", (c) => {
+    app.get(this.ssePath, (c) => {
       return streamSSE(c, async (stream) => {
         const ping = setInterval(() => {
           stream.writeSSE({ event: "ping", data: "" }).catch((err) => {
@@ -91,7 +59,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
         }
 
         while (loop) {
-          const allEvents = await this.getEvents(lastEventCount > 0 ? lastEventCount : undefined);
+          const allEvents = this.getEvents(lastEventCount > 0 ? lastEventCount : undefined);
           const newEvents = allEvents.slice(lastEventCount > 0 ? 0 : lastEventCount);
 
           for (const event of newEvents) {
@@ -113,5 +81,16 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
     });
 
     return app.fetch(request);
+  }
+
+  private notifyNewEvent() {
+    // Resolve all waiting promises
+    const resolvers = this.eventResolvers;
+    this.eventResolvers = [];
+    resolvers.forEach((resolve) => resolve());
+  }
+
+  private waitForNewEvent(): Promise<void> {
+    return new Promise((resolve) => this.eventResolvers.push(resolve));
   }
 }

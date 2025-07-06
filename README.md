@@ -1,6 +1,10 @@
-# cloudflare-workflow-events
+# workflow-events
 
-The `cloudflare-workflow-events` exposes a Server-Sent Events endpoint that emits events about the progress of a workflow.
+The `workflow-events` module exposes a Server-Sent Events endpoint that emits events about the progress of a workflow.
+
+It listens for events originating from a workflow engine. While Cloudflare Workflows
+are supported (via `@oselvar/workflow-events/cloudflare`), the SSE support
+also works with other workflow engines such as Temporal.
 
 For example:
 

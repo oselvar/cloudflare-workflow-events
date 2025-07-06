@@ -6,7 +6,8 @@ import type {
   WorkflowTimeoutDuration,
 } from "cloudflare:workers";
 
-import type { StepMethod, WorkflowEvents } from "./WorkflowEvents";
+import type { WorkflowEvents } from "../examples";
+import type { StepMethod } from "../hono/WorkflowSSE";
 
 /**
  * Whether or not to send an event notification for a given step
