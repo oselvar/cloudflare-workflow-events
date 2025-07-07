@@ -1,7 +1,11 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/sse/index.ts"],
+  entry: [
+    "src/hono/index.ts",
+    "src/cloudflare-workflows/index.ts",
+    "src/cloudflare-workflows/sse/index.ts",
+  ],
   splitting: false,
   sourcemap: true,
   clean: true,

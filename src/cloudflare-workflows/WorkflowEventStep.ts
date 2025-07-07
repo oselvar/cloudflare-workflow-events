@@ -7,7 +7,19 @@ import type {
 } from "cloudflare:workers";
 
 import type { WorkflowEvents } from "../examples";
-import type { StepMethod } from "../hono/WorkflowSSE";
+import type { ServerSentEventWithId } from "../hono/SSETarget";
+
+export type StepMethod = "do" | "sleep" | "sleepUntil" | "waitForEvent";
+
+export type StepEvent = {
+  type: "started" | "completed" | "failed";
+  method: StepMethod;
+  step: string;
+  timestamp: string;
+  error?: string;
+};
+
+export type StepEventWithId = ServerSentEventWithId<StepEvent>;
 
 /**
  * Whether or not to send an event notification for a given step
@@ -63,7 +75,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
     if (!addEvent) {
       return callback();
     }
-    await this.workflowEvents.addEvent({
+    await this.workflowEvents.dispatchEvent({
       type: "started",
       method: method,
       step,
@@ -72,7 +84,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
 
     try {
       const result = await callback();
-      await this.workflowEvents.addEvent({
+      await this.workflowEvents.dispatchEvent({
         type: "completed",
         method: method,
         step,
@@ -80,7 +92,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
       });
       return result;
     } catch (error) {
-      await this.workflowEvents.addEvent({
+      await this.workflowEvents.dispatchEvent({
         type: "failed",
         method: method,
         step,

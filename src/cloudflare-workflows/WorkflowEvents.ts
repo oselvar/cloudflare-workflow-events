@@ -1,21 +1,18 @@
 import { DurableObject } from "cloudflare:workers";
 
-import { type StepEvent, type StepEventWithId, WorkflowSSE } from "../hono/WorkflowSSE";
+import { SSETarget } from "../hono/SSETarget";
+import type { StepEvent, StepEventWithId } from "./WorkflowEventStep";
 
 export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
-  private workflowSSE: WorkflowSSE;
+  private workflowSSE: DurableObjectSSETarget;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
-    this.workflowSSE = new DurableObjectWorkflowSSE(ctx);
+    this.workflowSSE = new DurableObjectSSETarget(ctx);
   }
 
-  async addEvent(event: StepEvent) {
-    this.workflowSSE.addEvent(event);
-  }
-
-  public getEvents(sinceId?: number): readonly StepEventWithId[] {
-    return this.workflowSSE.getEvents(sinceId);
+  async dispatchEvent(event: StepEvent) {
+    this.workflowSSE.dispatchEvent(event);
   }
 
   override async fetch(request: Request) {
@@ -23,7 +20,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   }
 }
 
-class DurableObjectWorkflowSSE extends WorkflowSSE {
+class DurableObjectSSETarget extends SSETarget<StepEvent> {
   constructor(private readonly ctx: DurableObjectState) {
     super("/sse");
     const sql = ctx.storage.sql;

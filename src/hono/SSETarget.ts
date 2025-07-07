@@ -1,34 +1,31 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 
-export type StepMethod = "do" | "sleep" | "sleepUntil" | "waitForEvent";
-
-export type StepEvent = {
-  type: "started" | "completed" | "failed";
-  method: StepMethod;
-  step: string;
-  timestamp: string;
-  error?: string;
+export type ServerSentEvent = {
+  type: string;
 };
 
-export type StepEventWithId = StepEvent & {
+export type ServerSentEventWithId<E extends ServerSentEvent> = E & {
   id: number;
 };
 
-export abstract class WorkflowSSE {
+export abstract class SSETarget<E extends ServerSentEvent> {
   private eventResolvers: Array<() => void> = [];
 
-  constructor(private readonly ssePath: string) {}
+  constructor(
+    private readonly ssePath: string,
+    private readonly pingIntervalMillis = 10_000,
+  ) {}
 
-  addEvent(event: StepEvent) {
+  dispatchEvent(event: E) {
     this.storeEvent(event);
 
     // Notify waiting streams about the new event
     this.notifyNewEvent();
   }
 
-  protected abstract storeEvent(event: StepEvent): void;
-  public abstract getEvents(sinceId?: number): readonly StepEventWithId[];
+  protected abstract storeEvent(event: E): void;
+  protected abstract getEvents(sinceId?: number): readonly ServerSentEventWithId<E>[];
 
   async fetch(request: Request) {
     const app = new Hono<{ Bindings: Env }>();
@@ -39,7 +36,7 @@ export abstract class WorkflowSSE {
             // eslint-disable-next-line no-console
             console.error("SSE Error writing ping", err);
           });
-        }, 10000);
+        }, this.pingIntervalMillis);
 
         let loop = true;
         stream.onAbort(() => {
