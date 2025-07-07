@@ -9,7 +9,16 @@ export type ServerSentEventWithId<E extends ServerSentEvent> = E & {
   id: number;
 };
 
-export abstract class SSETarget<E extends ServerSentEvent> {
+/**
+ * Receives events and dispatches them to connected EventSource clients.
+ *
+ * All dispatched events are stored.
+ * This allows clients to receive previously dispatched events.
+ *
+ * *IMPORTANT:* This class is meant to be subclassed, overriding storeEvent and getEvents.
+ * The default implementation stores events in memory, which may cause out of memory errors.
+ */
+export class SSETarget<E extends ServerSentEvent> {
   private eventResolvers: Array<() => void> = [];
 
   constructor(
@@ -17,6 +26,10 @@ export abstract class SSETarget<E extends ServerSentEvent> {
     private readonly pingIntervalMillis = 10_000,
   ) {}
 
+  /**
+   * Dispatches an event to connected EventSource clients.
+   * @param event the event object to dispatch.
+   */
   dispatchEvent(event: E) {
     this.storeEvent(event);
 
@@ -24,8 +37,17 @@ export abstract class SSETarget<E extends ServerSentEvent> {
     this.notifyNewEvent();
   }
 
-  protected abstract storeEvent(event: E): void;
-  protected abstract getEvents(sinceId?: number): readonly ServerSentEventWithId<E>[];
+  private events: ServerSentEventWithId<E>[] = [];
+
+  protected storeEvent(event: E): void {
+    this.events.push({ ...event, id: this.events.length + 1 });
+  }
+
+  protected getEvents(
+    sinceId?: number,
+  ): readonly ServerSentEventWithId<ServerSentEventWithId<E>>[] {
+    return this.events.filter((event) => event.id > (sinceId ?? 0));
+  }
 
   async fetch(request: Request) {
     const app = new Hono<{ Bindings: Env }>();

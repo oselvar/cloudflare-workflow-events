@@ -2,9 +2,10 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: [
-    "src/hono/index.ts",
-    "src/cloudflare-workflows/index.ts",
-    "src/cloudflare-workflows/sse/index.ts",
+    "src/index.ts",
+    "src/workflows/index.ts",
+    "src/workflows/cloudflare/index.ts",
+    "src/workflows/cloudflare/sse/index.ts",
   ],
   splitting: false,
   sourcemap: true,

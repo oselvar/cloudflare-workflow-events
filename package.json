@@ -1,7 +1,7 @@
 {
-  "name": "@oselvar/cloudflare-workflow-events",
+  "name": "@oselvar/ssetarget",
   "version": "0.2.0",
-  "description": "Subscribe to events from Cloudflare Workflows",
+  "description": "Dispatch Server-Sent Events",
   "publishConfig": {
     "access": "public"
   },
@@ -11,29 +11,33 @@
     "events",
     "sse"
   ],
-  "homepage": "https://github.com/oselvar/cloudflare-workflow-events#readme",
+  "homepage": "https://github.com/oselvar/ssetarget#readme",
   "bugs": {
-    "url": "https://github.com/oselvar/cloudflare-workflow-events/issues"
+    "url": "https://github.com/oselvar/ssetarget/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/oselvar/cloudflare-workflow-events.git"
+    "url": "git+ssh://git@github.com/oselvar/ssetarget.git"
   },
   "license": "MIT",
   "author": "Aslak Hellesøy",
   "type": "module",
   "exports": {
-    "./hono": {
-      "types": "./dist/hono/index.d.ts",
-      "import": "./dist/hono/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
-    "./cloudflare-workflows": {
-      "types": "./dist/cloudflare-workflows/index.d.ts",
-      "import": "./dist/cloudflare-workflows/index.js"
+    "./workflows": {
+      "types": "./dist/workflows/index.d.ts",
+      "import": "./dist/workflows/index.js"
     },
-    "./cloudflare-workflows/sse": {
-      "types": "./dist/cloudflare-workflows/sse/index.d.ts",
-      "import": "./dist/cloudflare-workflows/sse/index.js"
+    "./workflows/cloudflare": {
+      "types": "./dist/workflows/cloudflare/index.d.ts",
+      "import": "./dist/workflows/cloudflare/index.js"
+    },
+    "./workflows/cloudflare/sse": {
+      "types": "./dist/workflows/cloudflare/sse/index.d.ts",
+      "import": "./dist/workflows/cloudflare/sse/index.js"
     }
   },
   "files": [

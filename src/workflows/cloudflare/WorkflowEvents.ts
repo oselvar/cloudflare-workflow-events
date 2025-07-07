@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 
-import { SSETarget } from "../hono/SSETarget";
-import type { StepEvent, StepEventWithId } from "./WorkflowEventStep";
+import { SSETarget } from "../../SSETarget";
+import type { StepEvent, StepEventWithId } from "..";
 
 export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
   private workflowSSE: DurableObjectSSETarget;

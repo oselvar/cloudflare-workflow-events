@@ -1,12 +1,40 @@
-# workflow-events
+# SSETarget
 
-The `workflow-events` module exposes a Server-Sent Events endpoint that emits events about the progress of a workflow.
+The `@oselvar/ssetarget` module exposes a simple API for dispatching events to `EventSource` clients.
 
-It listens for events originating from a workflow engine. While Cloudflare Workflows
-are supported (via `@oselvar/workflow-events/cloudflare`), the SSE support
-also works with other workflow engines such as Temporal.
+```typescript
+const sse = new SSETarget("/sse");
 
-For example:
+sse.dispatchEvent({
+  type: "started",
+});
+```
+
+The `SSETarget` can be used to serve Server-Sent Events:
+
+```typescript
+function handleRequest(req: Request) {
+  return sse.fetch(req);
+}
+```
+
+## Cloudflare Workflow events
+
+The library was developed to server Server-Sent Events about the progress of [Cloudflare Workflows](https://developers.cloudflare.com/workflows/).
+
+```typescript
+export class MyWorkflow extends WorkflowEntrypoint {
+  override async run(event: WorkflowEvent, step: WorkflowStep) {
+    step = new WorkflowEventStep(step, this.env.WORKFLOW_EVENTS, event.instanceId);
+
+    // The step dispatches workflow events via SSE
+  }
+}
+```
+
+See the `./src/examples` directory and `./wrangler.toml` for details.
+
+Example SSE events:
 
 ```
 event: started
@@ -39,7 +67,7 @@ Start a workflow:
 
     curl -v -X POST http://localhost:9875
 
-Listen to events (using the `Location` header)
+Listen to events (using the ID from the `Location` header)
 
     curl http://localhost:9875/cbd3f7a0-e9ee-422d-8d33-9db7383dba2c/sse
 
