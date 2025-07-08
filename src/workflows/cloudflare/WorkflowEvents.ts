@@ -27,6 +27,7 @@ class DurableObjectSSETarget extends SSETarget<StepEvent> {
 
     sql.exec(`CREATE TABLE IF NOT EXISTS events(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      taskId TEXT NOT NULL,
       type TEXT NOT NULL,
       step TEXT NOT NULL,
       timestamp TEXT NOT NULL,
@@ -36,8 +37,8 @@ class DurableObjectSSETarget extends SSETarget<StepEvent> {
 
   override storeEvent(event: StepEvent) {
     const sql = this.ctx.storage.sql;
-    const query = `INSERT INTO events (type, step, timestamp, error) VALUES (?, ?, ?, ?)`;
-    sql.exec(query, ...[event.type, event.step, event.timestamp, event.error]);
+    const query = `INSERT INTO events (taskId, type, step, timestamp, error) VALUES (?, ?, ?, ?, ?)`;
+    sql.exec(query, ...[event.taskId, event.type, event.step, event.timestamp, event.error]);
   }
 
   override getEvents(sinceId?: number): readonly StepEventWithId[] {
