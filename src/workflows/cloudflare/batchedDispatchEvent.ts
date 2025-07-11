@@ -3,6 +3,16 @@ import type { WorkflowEvents } from "./WorkflowEvents";
 
 export type DispatchEvent = (instanceId: string, event: StepEvent) => Promise<void>;
 
+export function synchronousDispatchEvent<T extends WorkflowEvents<object>>(
+  ctx: ExecutionContext,
+  workflowEventsNs: DurableObjectNamespace<T>,
+): DispatchEvent {
+  return async (runId, event) => {
+    const eventsDurableObject = workflowEventsNs.get(workflowEventsNs.idFromName(runId));
+    ctx.waitUntil(eventsDurableObject.dispatchEvent(event));
+  };
+}
+
 /**
  * Creates a function that batches events and dispatches them after a delay.
  * This is useful to avoid spamming the DO with dispatchEvent calls, which may
