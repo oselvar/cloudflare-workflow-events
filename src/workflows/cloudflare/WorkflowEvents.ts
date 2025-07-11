@@ -11,8 +11,11 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
     this.workflowSSE = new DurableObjectSSETarget(ctx);
   }
 
-  async dispatchEvent(event: StepEvent) {
-    this.workflowSSE.dispatchEvent(event);
+  async dispatchEvent(event: StepEvent | readonly StepEvent[]) {
+    const eventsArray = Array.isArray(event) ? event : [event];
+    for (const event of eventsArray) {
+      this.workflowSSE.dispatchEvent(event);
+    }
   }
 
   override async fetch(request: Request) {
