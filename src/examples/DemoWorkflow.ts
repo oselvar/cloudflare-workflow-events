@@ -1,10 +1,15 @@
 import { WorkflowEntrypoint, type WorkflowEvent, type WorkflowStep } from "cloudflare:workers";
 
+import { batchedDispatchEvent } from "../workflows/cloudflare/batchedDispatchEvent";
 import { WorkflowEventStep } from "../workflows/cloudflare/WorkflowEventStep";
 
 export class DemoWorkflow extends WorkflowEntrypoint<Env> {
   override async run(event: WorkflowEvent<unknown>, step: WorkflowStep) {
-    step = new WorkflowEventStep(step, this.env.WORKFLOW_EVENTS, event.instanceId);
+    step = new WorkflowEventStep(
+      step,
+      event.instanceId,
+      batchedDispatchEvent(this.ctx, this.env.WORKFLOW_EVENTS, 5_000),
+    );
 
     for (let i = 0; i < 20; i++) {
       if (i % 3 === 2) {

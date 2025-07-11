@@ -7,19 +7,15 @@ import type {
 } from "cloudflare:workers";
 
 import type { ShouldDispatch } from "..";
-import type { WorkflowEvents } from "./WorkflowEvents";
+import type { DispatchEvent } from "./batchedDispatchEvent";
 
-export class WorkflowEventStep<Env extends object> implements WorkflowStep {
-  private readonly workflowEvents: DurableObjectStub<WorkflowEvents<Env>>;
-
+export class WorkflowEventStep implements WorkflowStep {
   constructor(
     private readonly step: WorkflowStep,
-    workflowEventsNs: DurableObjectNamespace<WorkflowEvents<Env>>,
-    instanceId: string,
+    private readonly instanceId: string,
+    private readonly dispatchEvent: DispatchEvent,
     private readonly shouldDispatch: ShouldDispatch = () => true,
-  ) {
-    this.workflowEvents = workflowEventsNs.get(workflowEventsNs.idFromName(instanceId));
-  }
+  ) {}
 
   async do<T extends Rpc.Serializable<T>>(
     name: string,
@@ -54,7 +50,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
       return callback();
     }
     const taskId = crypto.randomUUID();
-    await this.workflowEvents.dispatchEvent({
+    await this.dispatchEvent(this.instanceId, {
       type: "started",
       taskId,
       step,
@@ -63,7 +59,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
 
     try {
       const result = await callback();
-      await this.workflowEvents.dispatchEvent({
+      await this.dispatchEvent(this.instanceId, {
         type: "completed",
         taskId,
         step,
@@ -71,7 +67,7 @@ export class WorkflowEventStep<Env extends object> implements WorkflowStep {
       });
       return result;
     } catch (error) {
-      await this.workflowEvents.dispatchEvent({
+      await this.dispatchEvent(this.instanceId, {
         type: "failed",
         taskId,
         step,
