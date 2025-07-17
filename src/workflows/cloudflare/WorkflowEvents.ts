@@ -25,7 +25,7 @@ export class WorkflowEvents<Env extends object> extends DurableObject<Env> {
 
 class DurableObjectSSETarget extends SSETarget<StepEvent> {
   constructor(private readonly ctx: DurableObjectState) {
-    super("/sse");
+    super("*");
     const sql = ctx.storage.sql;
 
     sql.exec(`CREATE TABLE IF NOT EXISTS events(
